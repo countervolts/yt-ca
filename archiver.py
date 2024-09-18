@@ -12,7 +12,7 @@ config_file = 'config.py'
 if not os.path.exists(config_file):
     api_key = input("enter your youtube data v3 api key: ")
     skip_shorts = input("do you want to skip shorts? (yes/no): ").strip().lower() == 'yes'
-    print("video download quality: l (low, 480p), m (medium, 720p), H (high, highest available)")
+    print("video download quality: l (480p), m (720p), H (high, highest available)")
     download_quality = input("enter download quality: ").strip().lower()
     geo_bypass = input("would you like to bypass geo restrictions? (y/n): ").lower()
     ffmpeg_path = input("enter the path to ffmpeg: ")
@@ -99,7 +99,8 @@ def download_video(video_url, download_path):
         'noplaylist': True,
         'ffmpeg_location': FFMPEG_PATH,
         'geo-bypass': GEO_BYPASS,
-        'no-part': True
+        'no-part': True,
+        'console-title': True
         }
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
