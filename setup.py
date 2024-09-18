@@ -4,11 +4,10 @@ import sys
 import time
 
 required_packages = [
-    'google-api-python-client',
     'tqdm',
     'colorama',
     'yt-dlp',
-    'pymovie',
+    'google-api-python-client'
 ]
 
 total_packages = len(required_packages)
