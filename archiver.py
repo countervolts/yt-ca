@@ -1,4 +1,10 @@
 import os
+
+if not os.path.exists('config.py'):
+    print("run setup.py")
+    time.sleep(3)
+    exit()
+
 import re
 import time
 from tqdm import tqdm
@@ -6,34 +12,11 @@ from datetime import timedelta, datetime
 from colorama import init, Fore, Style
 import yt_dlp as youtube_dl
 from googleapiclient.discovery import build
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import subprocess
 
-config_file = 'config.py'
-
-if not os.path.exists(config_file):
-    api_key = input("enter your youtube data v3 api key: ")
-    skip_shorts = input("do you want to skip shorts? (yes/no): ").strip().lower() == 'yes'
-    print("video download quality: l (480p), m (720p), H (high, highest available)")
-    download_quality = input("enter download quality: ").strip().lower()
-    geo_bypass = input("would you like to bypass geo restrictions? (y/n): ").lower()
-    ffmpeg_path = input("enter the path to ffmpeg: ")
-
-    os.system('cls' if os.name == 'nt' else 'clear')
-    
-    quality_map = {'l': 'low', 'm': 'medium', 'h': 'high'}
-    download_quality = quality_map.get(download_quality, 'medium')
-
-    with open(config_file, 'w') as f:
-        f.write(f"API_KEY = '{api_key}'\n")
-        f.write(f"SKIP_SHORTS = {skip_shorts}\n")
-        f.write(f"DOWNLOAD_QUALITY = '{download_quality}'\n")
-        f.write(f"GEO_BYPASS = 's{geo_bypass}'\n")
-        f.write(f"FFMPEG_PATH = '{ffmpeg_path}'\n")
-        f.write(f"YOUTUBE_API_SERVICE_NAME = 'youtube'\n")
-        f.write(f"YOUTUBE_API_VERSION = 'v3'\n")
-
-    from config import *
-else:
-    from config import *
+from compression.compressor import *
+from config import *
 
 youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=API_KEY)
 
@@ -133,13 +116,64 @@ def print_status(video_details, downloaded_count, download_path, current_video, 
     print(f"{Fore.CYAN}est total size on disk: {Fore.YELLOW}{total_size_estimate}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}total size on disk: {Fore.YELLOW}{total_size_str}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}est time remaining: {Fore.YELLOW}{est_time_remaining_str}{Style.RESET_ALL}")
-    print()
-    print(f"{Fore.CYAN}currently downloading: {Fore.YELLOW}{current_video['snippet']['title']}{Style.RESET_ALL}")
+    print(f"\n{Fore.CYAN}currently downloading: {Fore.YELLOW}{current_video['snippet']['title']}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}video length: {Fore.YELLOW}{current_video_duration_str}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}release date: {Fore.YELLOW}{current_video_release_date}{Style.RESET_ALL}")
 
+def get_greeting():
+    current_hour = datetime.now().hour
+    if 5 <= current_hour < 12:
+        return "good morning"
+    elif 12 <= current_hour < 17:
+        return "good afternoon"
+    elif 17 <= current_hour < 21:
+        return "good evening"
+    else:
+        return "good night"
+
+def convert_video(input_file, output_file):
+    subprocess.run([FFMPEG_PATH, '-i', input_file, output_file, '-loglevel', 'quiet'])
+
+def convert_videos(download_path, target_format):
+    video_files = [f for f in os.listdir(download_path) if f.endswith((".mp4", ".mkv", ".webm"))]
+    total_videos = len(video_files)
+    start_time = time.time()
+    elapsed_times = []
+
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for filename in video_files:
+            base = os.path.splitext(filename)[0]
+            target_file = f"{base}.{target_format}"
+            input_file = os.path.join(download_path, filename)
+            output_file = os.path.join(download_path, target_file)
+            futures.append(executor.submit(convert_video, input_file, output_file))
+
+        for i, future in enumerate(tqdm(as_completed(futures), total=total_videos, desc="Converting videos", unit="video")):
+            start_video_time = time.time()
+            future.result()
+            end_video_time = time.time()
+            
+            elapsed_times.append(end_video_time - start_video_time)
+            avg_time_per_video = sum(elapsed_times) / len(elapsed_times)
+            est_time_remaining = avg_time_per_video * (total_videos - (i + 1))
+            est_time_remaining_str = str(timedelta(seconds=est_time_remaining))
+
+    total_time = time.time() - start_time
+    print(f"All videos converted in {str(timedelta(seconds=total_time))}")
+
+    delete_choice = input("Do you want to delete the original videos that were not converted? (yes/no): ").strip().lower()
+    if delete_choice == 'yes':
+        for filename in video_files:
+            os.remove(os.path.join(download_path, filename))
+        print("Original videos deleted.")
+
 def main():
-    channel_name = input("Enter YouTube channel name: ")
+    os.system('cls' if os.name == 'nt' else 'clear')
+    greeting = get_greeting()
+    print(greeting)
+    
+    channel_name = input("\nEnter YouTube channel name: ")
     channel_id = get_channel_id(channel_name)
     video_ids = get_video_ids(channel_id)
     video_details = get_video_details(video_ids)
@@ -203,8 +237,7 @@ def main():
         download_video(video_url, download_path)
         end_video_time = time.time()
         elapsed_times.append(end_video_time - start_video_time)
-        print_status(video_details, i + 1, download_path, video, elapsed_times, total_size_estimate)
-
+        print_status(video_details, i + 1, download_path, video, elapsed_times, total_size_estimate) 
     end_time = time.time()
     elapsed_time = timedelta(seconds=end_time - start_time)
 
@@ -217,8 +250,29 @@ def main():
         info_file.write(f"time it took: {elapsed_time}\n")
         info_file.write(f"est size: {total_size_estimate}\n")
         info_file.write(f"real size: {total_size_str}\n")
+        info_file.write("downloaded URLs:\n")
+        for video in video_details:
+            video_url = f"https://www.youtube.com/watch?v={video['id']}"
+            info_file.write(f"{video_url}\n")
 
-    print("Download completed.")
+    print("Downloading done\n")
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+    convert_choice = input("Do you want to convert the downloaded videos to a different format? (yes/no): ").strip().lower()
+    if convert_choice == 'yes':
+        target_format = input("Enter the target format (e.g., mp4, mov): ").strip().lower()
+        convert_videos(download_path, target_format)
+        compress_choice = input("Do you want to compress the converted videos? (yes/no): ").strip().lower()
+        if compress_choice == 'yes':
+            compress_videos(download_path)
+    else:
+        compress_choice = input("Do you want to compress the downloaded videos? (yes/no): ").strip().lower()
+        if compress_choice == 'yes':
+            compress_videos(download_path)
+
+    compress_choice = input("Do you want to compress the videos again? (yes/no): ").strip().lower()
+    if compress_choice == 'yes':
+        compress_videos(download_path)
 
 if __name__ == "__main__":
     main()
