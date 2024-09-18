@@ -1,4 +1,6 @@
 import os
+from datetime import timedelta, datetime
+import time
 
 if not os.path.exists('config.py'):
     print("run setup.py")
@@ -6,9 +8,7 @@ if not os.path.exists('config.py'):
     exit()
 
 import re
-import time
 from tqdm import tqdm
-from datetime import timedelta, datetime
 from colorama import init, Fore, Style
 import yt_dlp as youtube_dl
 from googleapiclient.discovery import build
