@@ -5,6 +5,7 @@ from tqdm import tqdm
 from datetime import timedelta, datetime
 from colorama import init, Fore, Style
 import yt_dlp as youtube_dl
+from googleapiclient.discovery import build
 
 config_file = 'config.py'
 
@@ -13,8 +14,11 @@ if not os.path.exists(config_file):
     skip_shorts = input("do you want to skip shorts? (yes/no): ").strip().lower() == 'yes'
     print("video download quality: l (low, 480p), m (medium, 720p), H (high, highest available)")
     download_quality = input("enter download quality: ").strip().lower()
+    geo_bypass = input("would you like to bypass geo restrictions? (y/n): ").lower()
     ffmpeg_path = input("enter the path to ffmpeg: ")
 
+    os.system('cls' if os.name == 'nt' else 'clear')
+    
     quality_map = {'l': 'low', 'm': 'medium', 'h': 'high'}
     download_quality = quality_map.get(download_quality, 'medium')
 
@@ -22,13 +26,14 @@ if not os.path.exists(config_file):
         f.write(f"API_KEY = '{api_key}'\n")
         f.write(f"SKIP_SHORTS = {skip_shorts}\n")
         f.write(f"DOWNLOAD_QUALITY = '{download_quality}'\n")
+        f.write(f"GEO_BYPASS = 's{geo_bypass}'\n")
         f.write(f"FFMPEG_PATH = '{ffmpeg_path}'\n")
         f.write(f"YOUTUBE_API_SERVICE_NAME = 'youtube'\n")
         f.write(f"YOUTUBE_API_VERSION = 'v3'\n")
+
+    from config import *
 else:
     from config import *
-
-from googleapiclient.discovery import build
 
 youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=API_KEY)
 
@@ -92,8 +97,10 @@ def download_video(video_url, download_path):
         'format': quality_map[DOWNLOAD_QUALITY],
         'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),
         'noplaylist': True,
-        'ffmpeg_location': FFMPEG_PATH
-    }
+        'ffmpeg_location': FFMPEG_PATH,
+        'geo-bypass': GEO_BYPASS,
+        'no-part': True
+        }
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([video_url])
@@ -120,7 +127,6 @@ def print_status(video_details, downloaded_count, download_path, current_video, 
 
     est_time_remaining_str = str(timedelta(seconds=est_time_remaining))
 
-    os.system('cls' if os.name == 'nt' else 'clear')
     print(f"{Fore.CYAN}videos remaining: {Fore.YELLOW}{downloaded_count}/{remaining_videos}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}time downloaded: {Fore.YELLOW}{total_duration_str}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}est total size on disk: {Fore.YELLOW}{total_size_estimate}{Style.RESET_ALL}")
@@ -170,13 +176,11 @@ def main():
             newest_video = video['snippet']['title']
 
     os.system('cls' if os.name == 'nt' else 'clear')
-
     print(f"{Fore.CYAN}Channel: {Fore.YELLOW}{channel_name}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}Videos: {Fore.YELLOW}{len(video_details)}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}Total Length: {Fore.YELLOW}{total_duration}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}est size: {Fore.YELLOW}{total_size_estimate}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}size Calculation: {Fore.YELLOW}{DOWNLOAD_QUALITY} quality{Style.RESET_ALL}")
-    # lazy fix tbh
     if oldest_video:
         print(f"{Fore.CYAN}Newest Video: {Fore.YELLOW}{oldest_video}{Style.RESET_ALL}")
     if newest_video:
@@ -192,6 +196,8 @@ def main():
 
     for i, video in enumerate(video_details):
         video_url = f"https://www.youtube.com/watch?v={video['id']}"
+        if SKIP_SHORTS and ('shorts' in video_url or is_short(video)):
+            continue
         start_video_time = time.time()
         download_video(video_url, download_path)
         end_video_time = time.time()
