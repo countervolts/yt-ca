@@ -1,3 +1,6 @@
+# LOCAL .GITIGNORE
 config.py
 test
 __pycache__
+yt_data
+secret

@@ -1,9 +1,11 @@
 import os
 import subprocess
 from tqdm import tqdm
-from colorama import Fore, Style
+from colorama import Fore, Style, init
 
-from config import FFMPEG_PATH
+from config import *
+
+init()
 
 def get_file_size(file_path):
     return os.path.getsize(file_path) / (1024 * 1024)
@@ -34,49 +36,107 @@ def estimate_savings(vcodec, acodec, original_size):
 def compress_video(input_file, output_file, vcodec='libx265', acodec='aac', bitrate='1M', crf=28, preset='medium'):
     command = [
         FFMPEG_PATH, '-i', input_file, '-vcodec', vcodec, '-acodec', acodec,
-        '-b:v', bitrate, '-crf', str(crf), '-preset', preset, output_file, '-loglevel', 'quiet'
+        '-b:v', bitrate, '-crf', str(crf), '-preset', preset, output_file, '-loglevel', 'error'
     ]
     try:
         subprocess.run(command, check=True)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Compression failed for {input_file}: {e}")
 
-def compress_videos(download_path, vcodec='libx265', acodec='aac', bitrate='1M', crf=28, preset='medium'):
+
+def get_video_codecs():
+    return [
+        'libx265', 
+        'libx264',
+        'mpeg4',
+        'libvpx',
+        'libxvid'
+    ]
+
+def get_audio_codecs():
+    return [
+        'aac',     
+        'mp3',
+        'vorbis',
+        'opus',
+        'pcm_s16le'
+    ]
+
+def display_codecs_with_color(codecs, title):
+    print(f"{Fore.CYAN}{title} (sorted for optimization):{Style.RESET_ALL}")
+    for codec in codecs:
+        print(f"{Fore.GREEN}{codec}{Style.RESET_ALL}", end=', ')
+    print()
+
+def display_preset_scale_tips():
+    print(f"{Fore.YELLOW}Preset Selection Scale (1-10):{Style.RESET_ALL}")
+    print("1 - ultrafast: Fastest encoding, but larger file sizes and lower quality.")
+    print("3 - veryfast: Good balance of speed and compression, but not optimal quality.")
+    print("6 - medium: Default setting, reasonable quality and compression.")
+    print("9 - slow: Better compression and quality, but takes significantly longer.")
+    print("Choose a number (1, 3, 6, 9) to set the preset level.")
+
+def get_preset_from_selection(selection):
+    preset_map = {
+        1: 'ultrafast',
+        3: 'veryfast',
+        6: 'medium',
+        9: 'slow'
+    }
+    return preset_map.get(selection, 'medium')
+
+def compress_videos(download_path, bitrate='1M', crf=28, preset='medium'):
     video_files = [f for f in os.listdir(download_path) if f.endswith((".mp4", ".mkv", ".webm"))]
     total_original_size = 0
     total_compressed_size = 0
     compression_details = []
 
+    vcodecs_sorted = get_video_codecs()
+    acodecs_sorted = get_audio_codecs()
+
+    display_codecs_with_color(vcodecs_sorted, "Video Codecs")
+    
+    vcodec = input(f"\n{Fore.YELLOW}Selected Video Codec: (default: libx265): {Style.RESET_ALL}") or 'libx265'
+    
+    display_codecs_with_color(acodecs_sorted, "Audio Codecs")
+    
+    acodec = input(f"\n{Fore.YELLOW}Selected Audio Codec: (default: aac): {Style.RESET_ALL}") or 'aac'
+
+    display_preset_scale_tips()
+
+    preset_selection = int(input(f"{Fore.YELLOW}Choose preset level (1, 3, 6, 9, default: 6): {Style.RESET_ALL}") or 6)
+    preset = get_preset_from_selection(preset_selection)
+
+    bitrate = input(f"{Fore.YELLOW}Enter the bitrate (default: 1M): {Style.RESET_ALL}") or '1M'
+    crf = int(input(f"{Fore.YELLOW}Enter the CRF value (default: 28): {Style.RESET_ALL}") or 28)
+
     for filename in tqdm(video_files, desc="Compressing videos", unit="video"):
         input_file = os.path.join(download_path, filename)
-        output_file = os.path.join(download_path, f"compressed_{filename}")
+        temp_output_file = os.path.join(download_path, f"compressed_{filename}")
         original_size = get_file_size(input_file)
         total_original_size += original_size
 
         try:
-            compress_video(input_file, output_file, vcodec, acodec, bitrate, crf, preset)
-            compressed_size = get_file_size(output_file)
+            compress_video(input_file, temp_output_file, vcodec, acodec, bitrate, crf, preset)
+            compressed_size = get_file_size(temp_output_file)
             total_compressed_size += compressed_size
             compression_details.append((filename, original_size, compressed_size))
+            
+            os.remove(input_file)
+            os.rename(temp_output_file, input_file)
         except RuntimeError as e:
             print(f"\n{Fore.RED}{e}{Style.RESET_ALL}")
             retry = input("Do you want to retry with different settings? (yes/no): ").strip().lower()
             if retry == 'yes':
-                vcodecs, acodecs = get_ffmpeg_codecs()
-                vcodecs = sorted(vcodecs, key=lambda x: {'libx265': 1, 'libx264': 2, 'mpeg4': 3}.get(x, 4))
-                acodecs = sorted(acodecs, key=lambda x: {'aac': 1, 'mp3': 2, 'vorbis': 3}.get(x, 4))
-                print("\nAvailable video codecs:")
-                print(", ".join(color_codecs(vcodecs)))
-                print("\nAvailable audio codecs:")
-                print(", ".join(color_codecs(acodecs)))
-                vcodec = input("Enter the video codec (default: libx265): ") or 'libx265'
-                acodec = input("Enter the audio codec (default: aac): ") or 'aac'
+                vcodec = input(f"{Fore.YELLOW}Enter the video codec (default: libx265): {Style.RESET_ALL}") or 'libx265'
+                acodec = input(f"{Fore.YELLOW}Enter the audio codec (default: aac): {Style.RESET_ALL}") or 'aac'
                 estimated_savings = estimate_savings(vcodec, acodec, original_size)
-                print(f"Estimated savings: {estimated_savings:.2f} MB")
-                bitrate = input("Enter the bitrate (default: 1M): ") or '1M'
-                crf = int(input("Enter the CRF value (default: 28): ") or 28)
-                preset = input("Enter the preset (default: medium): ") or 'medium'
-                compress_videos(download_path, vcodec, acodec, bitrate, crf, preset)
+                print(f"{Fore.GREEN}Estimated savings: {estimated_savings:.2f} MB{Style.RESET_ALL}")
+                bitrate = input(f"{Fore.YELLOW}Enter the bitrate (default: 1M): {Style.RESET_ALL}") or '1M'
+                crf = int(input(f"{Fore.YELLOW}Enter the CRF value (default: 28): {Style.RESET_ALL}") or 28)
+                preset_selection = int(input(f"{Fore.YELLOW}Choose preset level (1, 3, 6, 9, default: 6): {Style.RESET_ALL}") or 6)
+                preset = get_preset_from_selection(preset_selection)
+                compress_videos(download_path, bitrate=bitrate, crf=crf, preset=preset)
                 return
             else:
                 print("Skipping this video.")
@@ -93,3 +153,29 @@ def compress_videos(download_path, vcodec='libx265', acodec='aac', bitrate='1M',
     print(f"Total Compressed Size: {total_compressed_size:.2f} MB")
     print(f"Total Savings: {total_savings:.2f} MB")
     print(f"Average Savings per Video: {average_savings:.2f} MB")
+
+def compress_videos_simple(download_path, compression_level):
+    presets = {
+        'low': {'vcodec': 'libx264', 'acodec': 'aac', 'bitrate': '2M', 'crf': 23, 'preset': 'fast'},
+        'medium': {'vcodec': 'libx265', 'acodec': 'aac', 'bitrate': '1M', 'crf': 28, 'preset': 'medium'},
+        'high': {'vcodec': 'libx265', 'acodec': 'aac', 'bitrate': '500k', 'crf': 30, 'preset': 'slow'}
+    }
+    preset = presets[compression_level]
+    compress_videos(download_path, **preset)
+
+def main():
+    download_path = DOWNLOAD_PATH
+    os.system('cls' if os.name == 'nt' else 'clear')
+    mode = input("Choose compression mode (simple/advanced): ").strip().lower()
+    if mode == 'simple':
+        print(f"{Fore.GREEN}Simple Mode Selected{Style.RESET_ALL}")
+        compression_level = input("Choose compression level (low/medium/high): ").strip().lower()
+        compress_videos_simple(download_path, compression_level)
+    elif mode == 'advanced':
+        print(f"{Fore.YELLOW}Advanced Mode Selected{Style.RESET_ALL}")
+        compress_videos(download_path)
+    else:
+        print(f"{Fore.RED}Invalid mode selected. Exiting.{Style.RESET_ALL}")
+
+if __name__ == "__main__":
+    main()

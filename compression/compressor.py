@@ -1,5 +1,7 @@
-from .local import compress_videos
+from .local import main as local_main
 from .api import compress_videos_api, update_config
+from config import DOWNLOAD_PATH
+
 import os
 
 def get_config_value(key):
@@ -29,18 +31,11 @@ def main():
             if not api_key:
                 api_key = input("Enter your FreeConvert API key: ").strip()
                 update_config('FREECONVERT_API_KEY', api_key)
-            download_path = input("Enter the download path: ")
+            download_path = DOWNLOAD_PATH
             compress_videos_api(download_path, api_key)
     
     elif compression_method == 'local':
-        download_path = input("\nEnter the download path: ")
-        vcodec = input("Enter the video codec (default: libx265): ") or 'libx265'
-        acodec = input("Enter the audio codec (default: aac): ") or 'aac'
-        bitrate = input("Enter the bitrate (default: 1M): ") or '1M'
-        crf = int(input("Enter the CRF value (default: 28): ") or 28)
-        preset = input("Enter the preset (default: medium): ") or 'medium'
-        compress_videos(download_path, vcodec, acodec, bitrate, crf, preset)
-
+        local_main()
     else:
         print("Please choose 'local' or 'api'.")
 
