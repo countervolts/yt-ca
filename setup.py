@@ -9,8 +9,7 @@ required_packages = [
     'yt-dlp',
     'google-api-python-client',
     'psutil',
-    'platform',
-    'aria2p'
+    'platform'
 ]
 
 total_packages = len(required_packages)
