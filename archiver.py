@@ -14,8 +14,10 @@ import yt_dlp as youtube_dl
 from googleapiclient.discovery import build
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import subprocess
+import psutil
+import platform
 
-from compression.compressor import *
+from compression.compressor import main as compressor_main
 from config import *
 
 youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=API_KEY)
@@ -83,7 +85,8 @@ def download_video(video_url, download_path):
         'ffmpeg_location': FFMPEG_PATH,
         'geo-bypass': GEO_BYPASS,
         'no-part': True,
-        'console-title': True
+        'console-title': True,
+        'concurrent-fragments': CONCURRENT_FRAGMENTS
         }
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
@@ -162,39 +165,71 @@ def convert_videos(download_path, target_format):
     total_time = time.time() - start_time
     print(f"All videos converted in {str(timedelta(seconds=total_time))}")
 
-    delete_choice = input("Do you want to delete the original videos that were not converted? (yes/no): ").strip().lower()
-    if delete_choice == 'yes':
-        for filename in video_files:
-            os.remove(os.path.join(download_path, filename))
-        print("Original videos deleted.")
+    for filename in video_files:
+        os.remove(os.path.join(download_path, filename))
+        os.system('cls' if os.name == 'nt' else 'clear')
+    print("Original videos deleted.\n")
+
+def info_getter():
+    partitions = psutil.disk_partitions()
+    main_disk = None
+
+    for partition in partitions:
+        if partition.mountpoint == '/' or partition.mountpoint == 'C:\\':
+            try:
+                usage = psutil.disk_usage(partition.mountpoint)
+                main_disk = (partition.device, usage)
+                break
+            except PermissionError:
+                continue
+
+    os_info = platform.system()
+    if os_info == 'Darwin':
+        os_info = 'Darwin (MacOS)'
+
+    if main_disk:
+        device, usage = main_disk
+        total_storage = usage.total
+        total_used = usage.used
+
+        print("\nMain Disk Information:")
+        print(f"{device} - {usage.used / (1024 ** 3):.2f}/{usage.total / (1024 ** 3):.2f} GB used")
+
+        total_storage_tb = total_storage / (1024 ** 4)
+        total_used_tb = total_used / (1024 ** 4)
+        total_storage_gb = total_storage / (1024 ** 3)
+        total_used_gb = total_used / (1024 ** 3)
+
+        print(f"\nTotal Storage: {total_storage_tb:.2f} TB ({total_storage_gb:.2f} GB)")
+        print(f"Total Used: {total_used_tb:.2f} TB ({total_used_gb:.2f} GB)\n")
+    else:
+        print("Main disk not found.")
+
+    print(f"Operating System: {os_info}")
 
 def main():
     os.system('cls' if os.name == 'nt' else 'clear')
     greeting = get_greeting()
     print(greeting)
-    
+    info_getter()
     channel_name = input("\nEnter YouTube channel name: ")
     channel_id = get_channel_id(channel_name)
     video_ids = get_video_ids(channel_id)
     video_details = get_video_details(video_ids)
 
     global total_size_estimate
-    skip_calculation = input("Do you want to skip the size calculation? (yes/no): ").strip().lower()
-    if skip_calculation == 'yes':
-        total_size_estimate = "Skipped"
-    else:
-        print("Calculating total size estimate...")
-        size_estimate_map = {
-            'low': 500,  
-            'medium': 1000, 
-            'high': 1500  
-        }
-        est_size_per_hour = size_estimate_map[DOWNLOAD_QUALITY]
-        total_size_estimate = 0
-        for video in tqdm(video_details, desc="Calculating size", unit="video"):
-            duration = parse_duration(video['contentDetails']['duration'])
-            total_size_estimate += (duration.total_seconds() / 3600) * est_size_per_hour
-        total_size_estimate = f"{total_size_estimate / 1024:.2f} GB"
+    print("Calculating total size estimate...")
+    size_estimate_map = {
+        'low': 500,  
+        'medium': 1000, 
+        'high': 1500  
+    }
+    est_size_per_hour = size_estimate_map[DOWNLOAD_QUALITY]
+    total_size_estimate = 0
+    for video in tqdm(video_details, desc="Calculating size", unit="video"):
+        duration = parse_duration(video['contentDetails']['duration'])
+        total_size_estimate += (duration.total_seconds() / 3600) * est_size_per_hour
+    total_size_estimate = f"{total_size_estimate / 1024:.2f} GB"
 
     total_duration = timedelta()
     for video in video_details:
@@ -211,11 +246,11 @@ def main():
             newest_video = video['snippet']['title']
 
     os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"{Fore.CYAN}Channel: {Fore.YELLOW}{channel_name}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}Videos: {Fore.YELLOW}{len(video_details)}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}Total Length: {Fore.YELLOW}{total_duration}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}channel: {Fore.YELLOW}{channel_name}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}videos: {Fore.YELLOW}{len(video_details)}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}total length: {Fore.YELLOW}{total_duration}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}est size: {Fore.YELLOW}{total_size_estimate}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}size Calculation: {Fore.YELLOW}{DOWNLOAD_QUALITY} quality{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}size calculation: {Fore.YELLOW}{DOWNLOAD_QUALITY} quality{Style.RESET_ALL}")
     if oldest_video:
         print(f"{Fore.CYAN}Newest Video: {Fore.YELLOW}{oldest_video}{Style.RESET_ALL}")
     if newest_video:
@@ -250,7 +285,7 @@ def main():
         info_file.write(f"time it took: {elapsed_time}\n")
         info_file.write(f"est size: {total_size_estimate}\n")
         info_file.write(f"real size: {total_size_str}\n")
-        info_file.write("downloaded URLs:\n")
+        info_file.write("\ndownloaded URLs:\n")
         for video in video_details:
             video_url = f"https://www.youtube.com/watch?v={video['id']}"
             info_file.write(f"{video_url}\n")
@@ -261,18 +296,16 @@ def main():
     convert_choice = input("Do you want to convert the downloaded videos to a different format? (yes/no): ").strip().lower()
     if convert_choice == 'yes':
         target_format = input("Enter the target format (e.g., mp4, mov): ").strip().lower()
+        os.system('cls' if os.name == 'nt' else 'clear')
         convert_videos(download_path, target_format)
         compress_choice = input("Do you want to compress the converted videos? (yes/no): ").strip().lower()
         if compress_choice == 'yes':
-            compress_videos(download_path)
+            compressor_main()  
     else:
         compress_choice = input("Do you want to compress the downloaded videos? (yes/no): ").strip().lower()
         if compress_choice == 'yes':
-            compress_videos(download_path)
-
-    compress_choice = input("Do you want to compress the videos again? (yes/no): ").strip().lower()
-    if compress_choice == 'yes':
-        compress_videos(download_path)
+            compressor_main()
+            os.system('cls' if os.name == 'nt' else 'clear')   
 
 if __name__ == "__main__":
     main()

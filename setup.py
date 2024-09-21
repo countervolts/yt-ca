@@ -7,7 +7,10 @@ required_packages = [
     'tqdm',
     'colorama',
     'yt-dlp',
-    'google-api-python-client'
+    'google-api-python-client',
+    'psutil',
+    'platform',
+    'aria2p'
 ]
 
 total_packages = len(required_packages)
@@ -34,6 +37,7 @@ def update_config():
     config_dict['SKIP_SHORTS'] = prompt_update('SKIP_SHORTS', config_dict['SKIP_SHORTS'])
     config_dict['DOWNLOAD_QUALITY'] = prompt_update('DOWNLOAD_QUALITY', config_dict['DOWNLOAD_QUALITY'])
     config_dict['GEO_BYPASS'] = prompt_update('GEO_BYPASS', config_dict['GEO_BYPASS'])
+    config_dict['CONCURRENT_FRAGMENTS'] = prompt_update('CONCURRENT_FRAGMENTS', config_dict['CONCURRENT_FRAGMENTS'])
     config_dict['FFMPEG_PATH'] = prompt_update('FFMPEG_PATH', config_dict['FFMPEG_PATH'])
 
     with open(config_file, 'w') as f:
@@ -47,6 +51,7 @@ if not os.path.exists(config_file):
     print("video download quality: l (480p), m (720p), H (high, highest available)")
     download_quality = input("enter download quality: ").strip().lower()
     geo_bypass = input("would you like to bypass geo restrictions? (y/n): ").lower() == 'yes'
+    concurrent_fragments = 5 if input("would you like to use concurrent fragmenting? (yes/no): ").strip().lower() == 'yes' else 1
     ffmpeg_path = input("enter the path to ffmpeg: ")
 
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -59,6 +64,7 @@ if not os.path.exists(config_file):
         f.write(f"SKIP_SHORTS = '{skip_shorts}'\n")
         f.write(f"DOWNLOAD_QUALITY = '{download_quality}'\n")
         f.write(f"GEO_BYPASS = '{geo_bypass}'\n")
+        f.write(f"CONCURRENT_FRAGMENTS = {concurrent_fragments}\n")
         f.write(f"FFMPEG_PATH = '{ffmpeg_path}'\n")
         f.write(f"YOUTUBE_API_SERVICE_NAME = 'youtube'\n")
         f.write(f"YOUTUBE_API_VERSION = 'v3'\n")
