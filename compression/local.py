@@ -36,13 +36,12 @@ def estimate_savings(vcodec, acodec, original_size):
 def compress_video(input_file, output_file, vcodec='libx265', acodec='aac', bitrate='1M', crf=28, preset='medium'):
     command = [
         FFMPEG_PATH, '-i', input_file, '-vcodec', vcodec, '-acodec', acodec,
-        '-b:v', bitrate, '-crf', str(crf), '-preset', preset, output_file, '-loglevel', 'error'
+        '-b:v', bitrate, '-crf', str(crf), '-preset', preset, output_file, '-loglevel', 'quiet'
     ]
     try:
         subprocess.run(command, check=True)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Compression failed for {input_file}: {e}")
-
 
 def get_video_codecs():
     return [
@@ -74,7 +73,7 @@ def display_preset_scale_tips():
     print("3 - veryfast: Good balance of speed and compression, but not optimal quality.")
     print("6 - medium: Default setting, reasonable quality and compression.")
     print("9 - slow: Better compression and quality, but takes significantly longer.")
-    print("Choose a number (1, 3, 6, 9) to set the preset level.")
+    print("choose any number from 1-10: ")
 
 def get_preset_from_selection(selection):
     preset_map = {
@@ -94,53 +93,46 @@ def compress_videos(download_path, bitrate='1M', crf=28, preset='medium'):
     vcodecs_sorted = get_video_codecs()
     acodecs_sorted = get_audio_codecs()
 
-    display_codecs_with_color(vcodecs_sorted, "Video Codecs")
-    
-    vcodec = input(f"\n{Fore.YELLOW}Selected Video Codec: (default: libx265): {Style.RESET_ALL}") or 'libx265'
-    
-    display_codecs_with_color(acodecs_sorted, "Audio Codecs")
-    
-    acodec = input(f"\n{Fore.YELLOW}Selected Audio Codec: (default: aac): {Style.RESET_ALL}") or 'aac'
+    while True:
+        display_codecs_with_color(vcodecs_sorted, "Video Codecs")
+        vcodec = input(f"\n{Fore.YELLOW}Selected Video Codec: (default: libx265): {Style.RESET_ALL}") or 'libx265'
+        
+        display_codecs_with_color(acodecs_sorted, "Audio Codecs")
+        acodec = input(f"\n{Fore.YELLOW}Selected Audio Codec: (default: aac): {Style.RESET_ALL}") or 'aac'
 
-    display_preset_scale_tips()
+        display_preset_scale_tips()
+        preset_selection = int(input(f"{Fore.YELLOW}Choose preset level (1, 3, 6, 9, default: 6): {Style.RESET_ALL}") or 6)
+        preset = get_preset_from_selection(preset_selection)
 
-    preset_selection = int(input(f"{Fore.YELLOW}Choose preset level (1, 3, 6, 9, default: 6): {Style.RESET_ALL}") or 6)
-    preset = get_preset_from_selection(preset_selection)
+        bitrate = input(f"{Fore.YELLOW}Enter the bitrate (default: 1M): {Style.RESET_ALL}") or '1M'
+        crf = int(input(f"{Fore.YELLOW}Enter the CRF value (default: 28): {Style.RESET_ALL}") or 28)
 
-    bitrate = input(f"{Fore.YELLOW}Enter the bitrate (default: 1M): {Style.RESET_ALL}") or '1M'
-    crf = int(input(f"{Fore.YELLOW}Enter the CRF value (default: 28): {Style.RESET_ALL}") or 28)
+        for filename in tqdm(video_files, desc="Compressing videos", unit="video"):
+            input_file = os.path.join(download_path, filename)
+            temp_output_file = os.path.join(download_path, f"compressed_{filename}")
+            original_size = get_file_size(input_file)
+            total_original_size += original_size
 
-    for filename in tqdm(video_files, desc="Compressing videos", unit="video"):
-        input_file = os.path.join(download_path, filename)
-        temp_output_file = os.path.join(download_path, f"compressed_{filename}")
-        original_size = get_file_size(input_file)
-        total_original_size += original_size
-
-        try:
-            compress_video(input_file, temp_output_file, vcodec, acodec, bitrate, crf, preset)
-            compressed_size = get_file_size(temp_output_file)
-            total_compressed_size += compressed_size
-            compression_details.append((filename, original_size, compressed_size))
-            
-            os.remove(input_file)
-            os.rename(temp_output_file, input_file)
-        except RuntimeError as e:
-            print(f"\n{Fore.RED}{e}{Style.RESET_ALL}")
-            retry = input("Do you want to retry with different settings? (yes/no): ").strip().lower()
-            if retry == 'yes':
-                vcodec = input(f"{Fore.YELLOW}Enter the video codec (default: libx265): {Style.RESET_ALL}") or 'libx265'
-                acodec = input(f"{Fore.YELLOW}Enter the audio codec (default: aac): {Style.RESET_ALL}") or 'aac'
-                estimated_savings = estimate_savings(vcodec, acodec, original_size)
-                print(f"{Fore.GREEN}Estimated savings: {estimated_savings:.2f} MB{Style.RESET_ALL}")
-                bitrate = input(f"{Fore.YELLOW}Enter the bitrate (default: 1M): {Style.RESET_ALL}") or '1M'
-                crf = int(input(f"{Fore.YELLOW}Enter the CRF value (default: 28): {Style.RESET_ALL}") or 28)
-                preset_selection = int(input(f"{Fore.YELLOW}Choose preset level (1, 3, 6, 9, default: 6): {Style.RESET_ALL}") or 6)
-                preset = get_preset_from_selection(preset_selection)
-                compress_videos(download_path, bitrate=bitrate, crf=crf, preset=preset)
-                return
-            else:
-                print("Skipping this video.")
-                continue
+            try:
+                compress_video(input_file, temp_output_file, vcodec, acodec, bitrate, crf, preset)
+                compressed_size = get_file_size(temp_output_file)
+                total_compressed_size += compressed_size
+                compression_details.append((filename, original_size, compressed_size))
+                
+                os.remove(input_file)
+                os.rename(temp_output_file, input_file)
+            except RuntimeError as e:
+                print(f"\n{Fore.RED}{e}{Style.RESET_ALL}")
+                retry = input("Do you want to retry with different settings? (yes/no): ").strip().lower()
+                if retry == 'yes':
+                    estimated_savings = estimate_savings(vcodec, acodec, original_size)
+                    print(f"{Fore.GREEN}Estimated savings: {estimated_savings:.2f} MB{Style.RESET_ALL}")
+                    break
+                else:
+                    print("Skipping this video.")
+                    continue
+        else:
+            break
 
     total_savings = total_original_size - total_compressed_size
     average_savings = total_savings / len(video_files) if video_files else 0

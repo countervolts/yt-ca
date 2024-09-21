@@ -242,13 +242,12 @@ def main():
     channel_info_path = os.path.join(base_path, f'{channel_id}_channel_info.txt')
     video_details_path = os.path.join(base_path, f'{channel_id}_video_details.txt')
     video_ids_path = os.path.join(base_path, f'{channel_id}_video_ids.txt')
-    video_details_path = os.path.join(base_path, f'{channel_id}_video_details.txt')
     
     data_loaded_from_saved_files = False
     
     if all(os.path.exists(path) for path in [channel_info_path, video_ids_path, video_details_path]):
-        print(f"Data for channel {channel_name} already exists. Loading from saved data...")
-        print("You have saved API calls since the data was already saved.")
+        print(f"\nData for channel {channel_name} already exists. Loading from saved data...")
+        print("You have saved API calls since the data was already saved.\nImported data:\n")
         
         with open(channel_info_path, 'r') as channel_info_file:
             channel_info = channel_info_file.read()
@@ -276,11 +275,15 @@ def main():
     else:
         print(f"Fetching data for channel {channel_name} from YouTube API...")
         
+        video_ids = get_video_ids(channel_id)
+        num_videos = len(video_ids)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with open(channel_info_path, 'w') as channel_info_file:
             channel_info_file.write(f"Channel Name: {channel_name}\n")
             channel_info_file.write(f"Channel ID: {channel_id}\n")
-        
-        video_ids = get_video_ids(channel_id)
+            channel_info_file.write(f"Number of cached videos: {num_videos}\n")
+            channel_info_file.write(f"Data saved on: {timestamp}\n")
         
         with open(video_ids_path, 'w') as video_ids_file:
             for video in video_ids:
