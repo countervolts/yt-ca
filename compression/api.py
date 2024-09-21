@@ -54,6 +54,7 @@ def create_compress_task(import_task_id, input_format, output_format, api_key, v
         return None
 
 def compress_videos_api(download_path, api_key):
+    os.system('cls' if os.name == 'nt' else 'clear')
     video_files = [f for f in os.listdir(download_path) if f.endswith((".mp4", ".mkv", ".webm"))]
     total_original_size = 0
     total_compressed_size = 0

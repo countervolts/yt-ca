@@ -8,6 +8,7 @@ side project
 
 - [ ] clean code up (seperate `archiver.py` into multiple files)
 - [ ] prevent youtube bot detection
+- [ ] add html, js and css code so the user can use the application better
 
 ### finished
 
