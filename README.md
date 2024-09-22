@@ -1,14 +1,15 @@
 ## youtube channel archiver
 
-side project
+project im working on a bit
 
-## todo
+## stuff todo/have done
 
 ### gotta finish
 
-- [ ] clean code up (seperate `archiver.py` into multiple files)
 - [ ] prevent youtube bot detection
 - [ ] add html, js and css code so the user can use the application better
+
+(pls request things to do)
 
 ### finished
 
@@ -33,3 +34,6 @@ side project
 
 - [X] optimize youtube api calls:
     - saving called data locally then calling it when the user calls the same channel id.
+
+- [X] clean code up (seperate `archiver.py` into multiple files)
+    - made every fuction into group file.

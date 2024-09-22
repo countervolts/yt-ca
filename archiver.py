@@ -1,232 +1,22 @@
-import os
-from datetime import timedelta, datetime
-import time
+from utils.misc.misc import *
 
-if not os.path.exists('config.py'):
-    print("run setup.py")
-    time.sleep(3)
-    exit()
+check_config()
 
-import re
+import yt_dlp as youtube_dl
 from tqdm import tqdm
 from colorama import init, Fore, Style
-import yt_dlp as youtube_dl
 from googleapiclient.discovery import build
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import subprocess
-import psutil
-import platform
-
 from compression.compressor import main as compressor_main
+from convert.local import *
 from config import *
+from utils.ytutils.ythelper import *
+from utils.ytutils.get import *
+from utils.dlutils.dl import *
+from utils.dlutils.path import *
 
 youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=API_KEY)
 
 init()
-
-def get_channel_id(channel_name):
-    request = youtube.search().list(
-        q=channel_name,
-        part='snippet',
-        type='channel',
-        maxResults=1
-    )
-    response = request.execute()
-    return response['items'][0]['snippet']['channelId']
-
-def get_video_ids(channel_id):
-    video_ids = []
-    request = youtube.search().list(
-        channelId=channel_id,
-        part='id,snippet',
-        order='date',
-        maxResults=50
-    )
-    while request:
-        response = request.execute()
-        for item in response['items']:
-            if 'videoId' in item['id']:
-                video_ids.append({'id': item['id']['videoId'], 'title': item['snippet']['title']})
-        request = youtube.search().list_next(request, response)
-    return video_ids
-
-def get_video_details(video_ids):
-    video_details = []
-    for i in range(0, len(video_ids), 50):
-        request = youtube.videos().list(
-            part='contentDetails,snippet',
-            id=','.join([video['id'] for video in video_ids[i:i+50]])
-        )
-        response = request.execute()
-        video_details += response['items']
-    return video_details
-
-def parse_duration(duration):
-    match = re.match(r'PT(\d+H)?(\d+M)?(\d+S)?', duration)
-    hours = int(match.group(1)[:-1]) if match.group(1) else 0
-    minutes = int(match.group(2)[:-1]) if match.group(2) else 0
-    seconds = int(match.group(3)[:-1]) if match.group(3) else 0
-    return timedelta(hours=hours, minutes=minutes, seconds=seconds)
-
-def is_short(video):
-    if 'contentDetails' not in video or 'duration' not in video['contentDetails']:
-        print(f"Skipping video {video.get('snippet', {}).get('title', 'Unknown')} due to missing duration info.")
-        return False
-    duration = parse_duration(video['contentDetails']['duration'])
-    return duration < timedelta(minutes=1)
-
-
-def download_video(video_url, download_path):
-    quality_map = {
-        'low': 'bestvideo[height<=480]+bestaudio/best[height<=480]',
-        'medium': 'bestvideo[height<=720]+bestaudio/best[height<=720]',
-        'high': 'bestvideo+bestaudio/best'
-    }
-    ydl_opts = {
-        'format': quality_map[DOWNLOAD_QUALITY],
-        'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),
-        'noplaylist': True,
-        'ffmpeg_location': FFMPEG_PATH,
-        'geo-bypass': GEO_BYPASS,
-        'no-part': True,
-        'console-title': True,
-        'concurrent-fragments': CONCURRENT_FRAGMENTS
-        }
-    try:
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([video_url])
-    except Exception as e:
-        print(f"{Fore.RED}Failed to download {video_url}: {e}{Style.RESET_ALL}")
-
-def save_download_path(download_path):
-    config_lines = []
-    if os.path.exists('config.py'):
-        with open('config.py', 'r') as config_file:
-            config_lines = config_file.readlines()
-    
-    with open('config.py', 'w') as config_file:
-        path_written = False
-        for line in config_lines:
-            if line.startswith("DOWNLOAD_PATH"):
-                config_file.write(f"DOWNLOAD_PATH = '{download_path}'\n")
-                path_written = True
-            else:
-                config_file.write(line)
-        
-        if not path_written:
-            config_file.write(f"DOWNLOAD_PATH = '{download_path}'\n")
-
-def print_status(video_details, downloaded_count, download_path, current_video, elapsed_times, total_size_estimate):
-    total_videos = len(video_details)
-    remaining_videos = total_videos - downloaded_count
-    
-    total_duration = 0
-    for video in video_details[:downloaded_count]:
-        if 'contentDetails' in video: 
-            total_duration += parse_duration(video['contentDetails']['duration']).total_seconds()
-    
-    total_duration_str = str(timedelta(seconds=total_duration))
-    total_size = sum(os.path.getsize(os.path.join(download_path, f)) for f in os.listdir(download_path) if os.path.isfile(os.path.join(download_path, f)))
-    total_size_str = f"{total_size / (1024 * 1024):.2f} MB"
-    
-    current_video_duration = timedelta(0)
-    current_video_release_date = "N/A"
-    if 'contentDetails' in current_video:
-        current_video_duration = parse_duration(current_video['contentDetails']['duration'])
-    if 'snippet' in current_video:
-        current_video_release_date = datetime.strptime(current_video['snippet']['publishedAt'], '%Y-%m-%dT%H:%M:%SZ').strftime('%B %d %Y')
-
-    current_video_duration_str = str(current_video_duration)
-
-    if elapsed_times:
-        avg_time_per_video = sum(elapsed_times) / len(elapsed_times)
-        est_time_remaining = avg_time_per_video * remaining_videos
-    else:
-        est_time_remaining = 0
-
-    est_time_remaining_str = str(timedelta(seconds=est_time_remaining))
-
-    print(f"{Fore.CYAN}videos remaining: {Fore.YELLOW}{downloaded_count}/{remaining_videos}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}time downloaded: {Fore.YELLOW}{total_duration_str}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}est total size on disk: {Fore.YELLOW}{total_size_estimate}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}total size on disk: {Fore.YELLOW}{total_size_str}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}est time remaining: {Fore.YELLOW}{est_time_remaining_str}{Style.RESET_ALL}")
-    print(f"\n{Fore.CYAN}currently downloading: {Fore.YELLOW}{current_video['snippet']['title'] if 'snippet' in current_video else 'N/A'}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}video length: {Fore.YELLOW}{current_video_duration_str}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}release date: {Fore.YELLOW}{current_video_release_date}{Style.RESET_ALL}")
-
-def convert_video(input_file, output_file):
-    subprocess.run([FFMPEG_PATH, '-i', input_file, output_file, '-loglevel', 'quiet'])
-
-def convert_videos(download_path, target_format):
-    video_files = [f for f in os.listdir(download_path) if f.endswith((".mp4", ".mkv", ".webm"))]
-    total_videos = len(video_files)
-    start_time = time.time()
-    elapsed_times = []
-
-    with ThreadPoolExecutor() as executor:
-        futures = []
-        for filename in video_files:
-            base = os.path.splitext(filename)[0]
-            target_file = f"{base}.{target_format}"
-            input_file = os.path.join(download_path, filename)
-            output_file = os.path.join(download_path, target_file)
-            futures.append(executor.submit(convert_video, input_file, output_file))
-
-        for i, future in enumerate(tqdm(as_completed(futures), total=total_videos, desc="Converting videos", unit="video")):
-            start_video_time = time.time()
-            future.result()
-            end_video_time = time.time()
-            
-            elapsed_times.append(end_video_time - start_video_time)
-            avg_time_per_video = sum(elapsed_times) / len(elapsed_times)
-            est_time_remaining = avg_time_per_video * (total_videos - (i + 1))
-            est_time_remaining_str = str(timedelta(seconds=est_time_remaining))
-
-    total_time = time.time() - start_time
-    print(f"All videos converted in {str(timedelta(seconds=total_time))}")
-
-    for filename in video_files:
-        os.remove(os.path.join(download_path, filename))
-        os.system('cls' if os.name == 'nt' else 'clear')
-    print("Original videos deleted.\n")
-
-def info_getter():
-    partitions = psutil.disk_partitions()
-    main_disk = None
-
-    for partition in partitions:
-        if partition.mountpoint == '/' or partition.mountpoint == 'C:\\':
-            try:
-                usage = psutil.disk_usage(partition.mountpoint)
-                main_disk = (partition.device, usage)
-                break
-            except PermissionError:
-                continue
-
-    os_info = platform.system()
-    if os_info == 'Darwin':
-        os_info = 'Darwin (MacOS)'
-
-    if main_disk:
-        device, usage = main_disk
-        total_storage = usage.total
-        total_used = usage.used
-
-        print("\nMain Disk Information:")
-        print(f"{device} - {usage.used / (1024 ** 3):.2f}/{usage.total / (1024 ** 3):.2f} GB used")
-
-        total_storage_tb = total_storage / (1024 ** 4)
-        total_used_tb = total_used / (1024 ** 4)
-        total_storage_gb = total_storage / (1024 ** 3)
-        total_used_gb = total_used / (1024 ** 3)
-
-        print(f"\nTotal Storage: {total_storage_tb:.2f} TB ({total_storage_gb:.2f} GB)")
-        print(f"Total Used: {total_used_tb:.2f} TB ({total_used_gb:.2f} GB)\n")
-    else:
-        print("Main disk not found.")
-
-    print(f"Operating System: {os_info}")
 
 def main():
     total_size_str = "Unknown size"
@@ -346,19 +136,19 @@ def main():
 
     print("Starting download...")
 
-    start_time = time.time()
+    start_time = time_module.time()
     elapsed_times = []
 
     for i, video in enumerate(video_details):
         video_url = f"https://www.youtube.com/watch?v={video['id']}"
         if SKIP_SHORTS and ('shorts' in video_url or is_short(video)):
             continue
-        start_video_time = time.time()
+        start_video_time = time_module.time()
         download_video(video_url, download_path)
-        end_video_time = time.time()
+        end_video_time = time_module.time()
         elapsed_times.append(end_video_time - start_video_time)
         print_status(video_details, i + 1, download_path, video, elapsed_times, total_size_str) 
-    end_time = time.time()
+    end_time = time_module.time()
     elapsed_time = timedelta(seconds=end_time - start_time)
 
     total_size = sum(os.path.getsize(os.path.join(download_path, f)) for f in os.listdir(download_path) if os.path.isfile(os.path.join(download_path, f)))
