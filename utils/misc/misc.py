@@ -1,12 +1,9 @@
 import psutil
 import platform
-from colorama import init, Fore, Style
 import os
-from datetime import datetime, timedelta
 import time as time_module
-import yt_dlp as youtube_dl
-from googleapiclient.discovery import build
-from tqdm import tqdm
+from datetime import datetime, timedelta
+from colorama import Fore, Style
 from utils.ytutils.ythelper import *                               
 from utils.ytutils.get import *
 from utils.dlutils.dl import *

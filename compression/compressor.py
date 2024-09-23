@@ -1,6 +1,6 @@
 from .local import main as local_main
 from .api import compress_videos_api, update_config
-from config import DOWNLOAD_PATH
+from config import *
 
 import os
 
