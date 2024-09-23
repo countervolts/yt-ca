@@ -1,5 +1,5 @@
 import re
-from datetime import timedelta, datetime
+from datetime import timedelta
 
 def parse_duration(duration):
     match = re.match(r'PT(\d+H)?(\d+M)?(\d+S)?', duration)
@@ -14,10 +14,3 @@ def is_short(video):
         return False
     duration = parse_duration(video['contentDetails']['duration'])
     return duration < timedelta(minutes=1)
-
-def save_channel_info(channel_id, display_name, video_count, save_path):
-    with open(save_path, 'w') as file:
-        file.write(f"Channel Name: {display_name}\n")
-        file.write(f"Channel ID: {channel_id}\n")
-        file.write(f"Number of cached videos: {video_count}\n")
-        file.write(f"Data saved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")

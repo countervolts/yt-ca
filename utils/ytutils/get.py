@@ -11,9 +11,7 @@ def get_channel_id(channel_name):
         maxResults=1
     )
     response = request.execute()
-    channel_id = response['items'][0]['snippet']['channelId']
-    display_name = response['items'][0]['snippet']['title']
-    return channel_id, display_name
+    return response['items'][0]['snippet']['channelId']
 
 def get_video_ids(channel_id):
     video_ids = []
