@@ -17,7 +17,7 @@ project im working on a bit
         - for ffmpeg and api they will be prompted but for just normal downloading if the data is stored there will be no prompt
     - [ ] add more options to that like the following
         - [ ] -cl `compression - local` then they will be prompted with either simple or advanced after downloading
-        - [ ] -cvl `convert - local` they will be given the prompt with telling them to use mp4, mov etc (using `ffmpeg`)mp
+        - [ ] -cvl `convert - local` they will be given the prompt with telling them to use mp4, mov etc (using `ffmpeg`)
         - the next ones will be done in the future 
         - [ ] -ca `compression - api` 
         - [ ] -cva `convert - api` 
