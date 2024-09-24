@@ -6,7 +6,8 @@ project im working on a bit
 
 ### gotta finish
 
-- [ ] prevent youtube bot detection
+- [ ] create and write `/convert/api.py` 
+- [ ] create and write `/convert.py`
 
 ### future
 
@@ -48,5 +49,8 @@ project im working on a bit
 - [X] optimize youtube api calls:
     - saving called data locally then calling it when the user calls the same channel id.
 
-- [X] clean code up (seperate `archiver.py` into multiple files)
-    - made every fuction into group file.
+- [X] clean code up:
+    - seperated the functions in `archiver.py` into group files.
+
+- [X] prevent youtube bot detection:
+    - when detected the code will retry then if it fails again it will change the user agent.

@@ -20,7 +20,6 @@ youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=API_
 
 init()
 
-
 def main():
     total_size_str = "Unknown size"
     total_size_estimate_str = "Unknown size"
