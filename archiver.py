@@ -7,12 +7,12 @@ from colorama import init, Fore, Style
 from googleapiclient.discovery import build
 
 from compression.compressor import main as compressor_main
-from convert.local import convert_videos
+from convert.local import convert_videos as convert_main
 from config import API_KEY, YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, DOWNLOAD_QUALITY, SKIP_SHORTS
-from utils.misc.misc import check_config, info_getter
-from utils.ytutils.ythelper import get_channel_id, get_video_ids, get_video_details, parse_duration, is_short
-from utils.dlutils.dl import download_video, print_status
-from utils.dlutils.path import save_download_path
+from utils.misc.misc import *
+from utils.ytutils.ythelper import *
+from utils.dlutils.dl import *
+from utils.dlutils.path import *
 
 check_config()
 
@@ -26,7 +26,7 @@ def main():
     os.system('cls' if os.name == 'nt' else 'clear')
     info_getter()
     channel_name = input("\nEnter YouTube channel name: ")
-    channel_id = get_channel_id(channel_name)
+    channel_id, display_name = get_channel_id(channel_name)
 
     base_path = os.path.join('yt_data', channel_id)
     os.makedirs(base_path, exist_ok=True)
@@ -72,7 +72,7 @@ def main():
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         with open(channel_info_path, 'w', encoding='utf-8') as channel_info_file:
-            channel_info_file.write(f"Channel Name: {channel_name}\n")
+            channel_info_file.write(f"Channel Name: {display_name}\n")
             channel_info_file.write(f"Channel ID: {channel_id}\n")
             channel_info_file.write(f"Number of cached videos: {num_videos}\n")
             channel_info_file.write(f"Data saved on: {timestamp}\n")
@@ -121,7 +121,7 @@ def main():
                 newest_video = video['snippet']['title']
 
         os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"{Fore.CYAN}channel: {Fore.YELLOW}{channel_name}{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}channel: {Fore.YELLOW}{display_name}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}videos: {Fore.YELLOW}{len(video_details)}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}total length: {Fore.YELLOW}{total_duration}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}est size: {Fore.YELLOW}{total_size_estimate_str}{Style.RESET_ALL}")
@@ -157,7 +157,7 @@ def main():
     total_size_str = f"{total_size / (1024 * 1024):.2f} MB"
 
     with open(os.path.join(base_path, f'{channel_id}_post_download_info.txt'), 'w', encoding='utf-8') as info_file:
-        info_file.write(f"channel: {channel_name}\n")
+        info_file.write(f"channel: {display_name}\n")
         info_file.write(f"videos downloaded: {len(video_details)}\n")
         info_file.write(f"time it took: {elapsed_time}\n")
         info_file.write(f"est size: {total_size_estimate_str}\n")
@@ -174,16 +174,13 @@ def main():
     if convert_choice == 'yes':
         target_format = input("Enter the target format (e.g., mp4, mov): ").strip().lower()
         os.system('cls' if os.name == 'nt' else 'clear')
-        convert_videos(download_path, target_format)
-        compress_choice = input("Compress converted videos? (yes/no): ").strip().lower()
-        if compress_choice == 'yes':
-            compressor_main()
-    else:
-        compress_choice = input("Compress the downloaded videos? (yes/no): ").strip().lower()
-        if compress_choice == 'yes':
-            compressor_main()
-            os.system('cls' if os.name == 'nt' else 'clear')
+        convert_main(download_path, target_format)
 
+    compress_choice = input("Do you want to compress the videos? (yes/no): ").strip().lower()
+    if compress_choice == 'yes':
+        compressor_main()
+    else:
+        print(f"byebye :)")
 
 if __name__ == "__main__":
     main()

@@ -103,7 +103,8 @@ def compress_videos(download_path, vcodec='libx265', acodec='aac', bitrate='1M',
             compression_details.append((filename, original_size, compressed_size))
             
             os.remove(input_file)
-            os.rename(temp_output_file, input_file)
+            final_output_file = os.path.join(download_path, filename)
+            os.rename(temp_output_file, final_output_file)
         except RuntimeError as e:
             print(f"\n{Fore.RED}{e}{Style.RESET_ALL}")
             retry = input("Do you want to retry with different settings? (yes/no): ").strip().lower()
@@ -122,7 +123,7 @@ def compress_videos(download_path, vcodec='libx265', acodec='aac', bitrate='1M',
     print(f"Total Compressed Size: {total_compressed_size:.2f} MB")
     print(f"Total Savings: {total_savings:.2f} MB")
     print(f"Average Savings per Video: {average_savings:.2f} MB")
-
+    
 def compress_videos_simple(download_path, compression_level):
     presets = {
         'low': {'vcodec': 'libx264', 'acodec': 'aac', 'bitrate': '2M', 'crf': 23, 'preset': 'fast'},

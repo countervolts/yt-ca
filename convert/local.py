@@ -4,7 +4,7 @@ import time as time_module
 from tqdm import tqdm
 from datetime import timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import *
+from config import FFMPEG_PATH
 
 def convert_video(input_file, output_file):
     subprocess.run([FFMPEG_PATH, '-i', input_file, output_file, '-loglevel', 'quiet'])
