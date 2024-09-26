@@ -6,9 +6,6 @@ project im working on a bit
 
 ### gotta finish
 
-- [ ] create and write `/convert/api.py` 
-- [ ] create and write `/convert.py`
-
 ### future
 
 - [ ] create pip package so you can just `python -m yt_archiver 'channel id'`
