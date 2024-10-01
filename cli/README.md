@@ -11,7 +11,7 @@
 
 ### other
 - `-ds --download-shorts` 
-- `c --compress` 
+- `-c --compress` 
     - h compresses ~30% of the original bitrate
     - m compresses ~50% of the original bitrate
     - l compresses ~65% of the original bitrate
