@@ -26,7 +26,7 @@ def download_video(video_url, download_path, download_quality):
             video_file = ydl.prepare_filename(info_dict)
             audio_file = video_file.replace('.mp4', '.m4a')
 
-            if os.path.exists(audio_file):
+            if os.path.exists(video_file) and os.path.exists(audio_file):
                 video_clip = VideoFileClip(video_file)
                 audio_clip = AudioFileClip(audio_file)
                 final_clip = video_clip.set_audio(audio_clip)
@@ -39,5 +39,3 @@ def download_video(video_url, download_path, download_quality):
     except Exception as e:
         print(f"{Fore.RED}Failed to download {video_url}: {e}{Style.RESET_ALL}")
         return False
-
-    print(f"{Fore.RED}All attempts to download {video_url} failed.{Style.RESET_ALL}")

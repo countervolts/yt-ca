@@ -6,6 +6,7 @@ from colorama import init, Fore, Style
 import time as time_module
 
 from compress import compress_videos_simple
+from convert import convert_videos
 from utils.misc.misc import info_getter, print_status
 from utils.dlutils.dl import download_video
 from utils.ytutils.ythelper import parse_duration, is_short
@@ -100,12 +101,13 @@ def download_videos(video_details, download_path, download_quality, skip_shorts)
     return elapsed_time, total_size_str
 
 def main():
-    parser = argparse.ArgumentParser(description="YouTube Channel Archiver CLI")
-    parser.add_argument("channel_id", help="ID of the YouTube channel to archive")
-    parser.add_argument("download_path", help="Path to download the videos")
-    parser.add_argument("-dq", "--download-quality", choices=['l', 'm', 'h'], required=True, help="Download quality (l: low, m: medium, h: high)")
-    parser.add_argument("-c", "--compress", choices=['l', 'm', 'h'], help="Enable local compression after downloading with specified level (l: low, m: medium, h: high)")
-    parser.add_argument("-ds", "--download-shorts", action='store_true', help="Download YouTube Shorts videos")
+    parser = argparse.ArgumentParser(description="Video processing CLI")
+    parser.add_argument("channel_id", help="ID of the YouTube channel")
+    parser.add_argument("download_path", help="Path to download videos")
+    parser.add_argument("-dq", "--download-quality", choices=["h", "m", "l"], required=True, help="Download quality")
+    parser.add_argument("-ds", "--download-shorts", action="store_true", help="Download shorts")
+    parser.add_argument("-c", "--compress", choices=["h", "m", "l"], help="Compress videos")
+    # parser.add_argument("-cv", "--convert", help="Convert videos to target format")
 
     args = parser.parse_args()
 

@@ -4,21 +4,19 @@ project im working on a bit
 
 ## stuff todo/have done
 
-### gotta finish
+### todo
+
+- [ ] create pip package so you can just `python -m yt_archiver 'channel id' 'download_path'`
+    - [X] create way for the user to create/bypass the `config.py`
+        - can be done if enough of `yt_data` is saved then you can just call that data and no api
+        - [X] uses moviepy instead of ffmpeg for compressing and soon to be converting
+    - [X] add more options to that like the following
+        - [X] `-c --compression` allows the user to use l (~30%), m (~50%) or h (~65%) to compress to X of the original bitrate    (using `moviepy`)
+        - [ ] `-cv --convert` lets the user convert to differet video file formats (using `moviepy`)
 
 ### future
 
-- [ ] create pip package so you can just `python -m yt_archiver 'channel id'`
-    - [X] create way for the user to create/bypass the `config.py`
-        - can be done if enough of `yt_data` is saved then you can just call that data and no api
-        - for ffmpeg and api they will be prompted but for just normal downloading if the data is stored there will be no prompt
-        - [X] uses moviepy instead of ffmpeg for compressing and soon to be converting
-    - [X] add more options to that like the following
-        - [X] -c `compression` then they will be prompted with either simple or advanced after downloading
-        - [ ] -cv `convert` they will be given the prompt with telling them to use mp4, mov etc (using `ffmpeg`)
 - [ ] add html, js and css code so the user can use the application better
-
-(pls request things to do)
 
 ### finished
 
@@ -49,3 +47,8 @@ project im working on a bit
 
 - [X] prevent youtube bot detection:
     - when detected the code will retry then if it fails again it will change the user agent.
+
+- [X] cli:
+    - added `cli.py` so if the user has the needed api data they can download a channel without needing a api key.
+    - the user can also compress and convert videos within the cli using the `-c` and `-cv` argurments.
+    - compressing and converting using `moviepy` instead of `ffmpeg`.

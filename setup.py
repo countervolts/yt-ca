@@ -9,7 +9,8 @@ required_packages = [
     'yt-dlp',
     'google-api-python-client',
     'psutil',
-    'platform'
+    'platform',
+    'moviepy'
 ]
 
 total_packages = len(required_packages)
