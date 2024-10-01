@@ -1,6 +1,7 @@
-config.py
 test
 __pycache__
 yt_data
+
 secret
 .DS_Store
+config.py
