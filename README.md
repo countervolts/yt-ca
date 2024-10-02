@@ -46,7 +46,7 @@ project im working on a bit
     - seperated the functions in `archiver.py` into group files.
 
 - [X] prevent youtube bot detection:
-    - when detected the code will retry then if it fails again it will change the user agent.
+    - when detected the code will retry then if it fails again it will change the user agent (doesnt work for cli version).
 
 - [X] cli:
     - added `cli.py` so if the user has the needed api data they can download a channel without needing a api key.
