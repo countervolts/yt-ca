@@ -2,7 +2,7 @@
 
 project im working on a bit
 
-## stuff todo/have done
+## todo/have done
 
 ### todo
 
@@ -11,7 +11,7 @@ project im working on a bit
         - can be done if enough of `yt_data` is saved then you can just call that data and no api
         - [X] uses moviepy instead of ffmpeg for compressing and soon to be converting
     - [X] add more options to that like the following
-        - [X] `-c --compression` allows the user to use l (~30%), m (~50%) or h (~65%) to compress to X of the original bitrate    (using `moviepy`)
+        - [X] `-c --compress` allows the user to use l (~30%), m (~50%) or h (~65%) to compress to X of the original bitrate (using `moviepy`)
         - [ ] `-cv --convert` lets the user convert to differet video file formats (using `moviepy`)
 
 ### future

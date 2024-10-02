@@ -13,12 +13,24 @@ required_packages = [
     'moviepy'
 ]
 
+def is_package_installed(package_name):
+    try:
+        __import__(package_name)
+        return True
+    except ImportError:
+        return False
+
 total_packages = len(required_packages)
 for i, package in enumerate(required_packages, start=1):
-    print(f"Downloading needed packages [{i}/{total_packages}]")
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package, '--quiet'])
+    package_name = package.split('==')[0] 
+    if not is_package_installed(package_name):
+        print(f"Downloading needed packages [{i}/{total_packages}]")
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', package, '--quiet'])
+    else:
+        print(f"Package '{package}' is already installed [{i}/{total_packages}]")
 
-config_file = 'config.py'
+script_dir = os.path.dirname(os.path.abspath(__file__))
+config_file = os.path.join(script_dir, 'config.py')
 
 def update_config():
     with open(config_file, 'r') as f:
@@ -74,5 +86,6 @@ else:
         update_config()
 
 print("All setup is done. Now running the main Python script.")
-time.sleep(1.2)
-subprocess.run([sys.executable, 'archiver.py'])
+time.sleep(2.2)
+archiver_script = os.path.join(script_dir, 'archiver.py')
+subprocess.run([sys.executable, archiver_script])

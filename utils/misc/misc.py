@@ -12,7 +12,9 @@ from utils.misc.misc import *
 from config import *
 
 def check_config():
-    if not os.path.exists('config.py'):
+    config = 'config.py'
+    
+    if not os.path.exists(config):
         print("run setup.py")
         time_module.sleep(3)
         exit()
