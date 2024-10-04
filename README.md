@@ -1,4 +1,4 @@
-## youtube channel archiver
+## yt-ca (youtube channel archiver)
 
 project im working on a bit
 
