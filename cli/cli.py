@@ -6,7 +6,6 @@ from colorama import init, Fore, Style
 import time as time_module
 
 from compress import compress_videos_simple
-from convert import convert_videos
 from utils.misc.misc import info_getter, print_status
 from utils.dlutils.dl import download_video
 from utils.ytutils.ythelper import parse_duration, is_short
